@@ -2613,6 +2613,7 @@ dependencies = [
  "chrono",
  "datafusion",
  "datafusion-functions-aggregate",
+ "insta",
  "itertools 0.14.0",
  "object_store",
  "pbjson-types",
