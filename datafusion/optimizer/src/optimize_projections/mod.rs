@@ -40,6 +40,7 @@ use crate::utils::NamePreserver;
 use datafusion_common::tree_node::{
     Transformed, TreeNode, TreeNodeContainer, TreeNodeRecursion,
 };
+use insta::assert_snapshot;
 
 /// Optimizer rule to prune unnecessary columns from intermediate schemas
 /// inside the [`LogicalPlan`]. This rule:
@@ -814,7 +815,9 @@ mod tests {
     use datafusion_functions_aggregate::count::count_udaf;
     use datafusion_functions_aggregate::expr_fn::{count, max, min};
     use datafusion_functions_aggregate::min_max::max_udaf;
+    use insta::assert_snapshot;
 
+    // TODO: need to migrate to `insta`
     fn assert_optimized_plan_equal(plan: LogicalPlan, expected: &str) -> Result<()> {
         assert_optimized_plan_eq(Arc::new(OptimizeProjections::new()), plan, expected)
     }
@@ -1551,14 +1554,17 @@ mod tests {
             .project(vec![col("a"), col("b"), col("c1")])?
             .build()?;
 
-        // make sure projections are pushed down to both table scans
-        let expected = "Left Join: test.a = test2.c1\
-        \n  TableScan: test projection=[a, b]\
-        \n  TableScan: test2 projection=[c1]";
-
         let optimized_plan = optimize(plan)?;
-        let formatted_plan = format!("{optimized_plan}");
-        assert_eq!(formatted_plan, expected);
+
+        assert_snapshot!(
+            optimized_plan,
+            // make sure projections are pushed down to both table scans
+            @r#"
+            Left Join: test.a = test2.c1
+              TableScan: test projection=[a, b]
+              TableScan: test2 projection=[c1]
+            "#
+        );
 
         // make sure schema for join node include both join columns
         let optimized_join = optimized_plan;
@@ -1602,15 +1608,18 @@ mod tests {
             .project(vec![col("a"), col("b")])?
             .build()?;
 
-        // make sure projections are pushed down to both table scans
-        let expected = "Projection: test.a, test.b\
-        \n  Left Join: test.a = test2.c1\
-        \n    TableScan: test projection=[a, b]\
-        \n    TableScan: test2 projection=[c1]";
-
         let optimized_plan = optimize(plan)?;
-        let formatted_plan = format!("{optimized_plan}");
-        assert_eq!(formatted_plan, expected);
+
+        assert_snapshot!(
+            optimized_plan,
+            // make sure projections are pushed down to both table scans
+            @r#"
+            Projection: test.a, test.b
+              Left Join: test.a = test2.c1
+                TableScan: test projection=[a, b]
+                TableScan: test2 projection=[c1]
+            "#
+        );
 
         // make sure schema for join node include both join columns
         let optimized_join = optimized_plan.inputs()[0];
@@ -1652,15 +1661,18 @@ mod tests {
             .project(vec![col("a"), col("b")])?
             .build()?;
 
-        // make sure projections are pushed down to table scan
-        let expected = "Projection: test.a, test.b\
-        \n  Left Join: Using test.a = test2.a\
-        \n    TableScan: test projection=[a, b]\
-        \n    TableScan: test2 projection=[a]";
-
         let optimized_plan = optimize(plan)?;
-        let formatted_plan = format!("{optimized_plan}");
-        assert_eq!(formatted_plan, expected);
+
+        assert_snapshot!(
+            optimized_plan,
+            // make sure projections are pushed down to both table scans
+            @r#"
+            Projection: test.a, test.b
+              Left Join: Using test.a = test2.a
+                TableScan: test projection=[a, b]
+                TableScan: test2 projection=[a]
+            "#
+        );
 
         // make sure schema for join node include both join columns
         let optimized_join = optimized_plan.inputs()[0];

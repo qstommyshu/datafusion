@@ -1055,6 +1055,7 @@ mod test {
 
     use arrow::datatypes::DataType::Utf8;
     use arrow::datatypes::{DataType, Field, Schema, SchemaBuilder, TimeUnit};
+    use insta::assert_snapshot;
 
     use crate::analyzer::type_coercion::{
         coerce_case_expression, TypeCoercion, TypeCoercionRewriter,
@@ -1882,12 +1883,12 @@ mod test {
             else_expr: Some(Box::new(col("string"))),
         };
         let err = coerce_case_expression(case, &schema).unwrap_err();
-        assert_eq!(
+
+        assert_snapshot!(
             err.strip_backtrace(),
-            "Error during planning: \
-            Failed to coerce case (Interval(MonthDayNano)) and \
-            when ([Float32, Binary, Utf8]) to common types in \
-            CASE WHEN expression"
+            @r#"
+            Error during planning: Failed to coerce case (Interval(MonthDayNano)) and when ([Float32, Binary, Utf8]) to common types in CASE WHEN expression
+            "#            
         );
 
         let case = Case {
@@ -1900,12 +1901,11 @@ mod test {
             else_expr: Some(Box::new(col("timestamp"))),
         };
         let err = coerce_case_expression(case, &schema).unwrap_err();
-        assert_eq!(
+        assert_snapshot!(
             err.strip_backtrace(),
-            "Error during planning: \
-            Failed to coerce then ([Date32, Float32, Binary]) and \
-            else (Some(Timestamp(Nanosecond, None))) to common types \
-            in CASE WHEN expression"
+            @r#"
+            Error during planning: Failed to coerce then ([Date32, Float32, Binary]) and else (Some(Timestamp(Nanosecond, None))) to common types in CASE WHEN expression
+            "#
         );
 
         Ok(())
